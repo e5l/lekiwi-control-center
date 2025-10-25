@@ -1,0 +1,36 @@
+# LeKiwi Robot Configuration
+# This file is read by the control center at startup
+
+robot:
+  # Serial port for motor bus
+  port: "/dev/ttyACM0"
+
+  # Disable torque when disconnecting (safety)
+  disable_torque_on_disconnect: true
+
+  # Maximum relative movement per command (safety limit)
+  # Set to null to disable, or a float for global limit
+  max_relative_target: null
+
+  # Use degrees for normalization (backward compatibility)
+  use_degrees: false
+
+cameras:
+  front:
+    index_or_path: "/dev/video0"
+    width: 640
+    height: 480
+    fps: 30
+    rotation: 2  # 180 degrees
+
+  wrist:
+    index_or_path: "/dev/video2"
+    width: 480
+    height: 640
+    fps: 30
+    rotation: 1  # 90 degrees clockwise
+
+server:
+  host: "0.0.0.0"
+  port: 8000
+  log_level: "info"
