@@ -197,6 +197,18 @@
             background: #da190b;
         }
 
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        #connectBtn {
+            font-size: 13px;
+            padding: 8px 16px;
+            width: auto;
+            margin-left: 20px;
+        }
+
         .button-group {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -244,6 +256,7 @@
             <div class="status">
                 <div class="status-indicator" id="statusIndicator"></div>
                 <span id="statusText">Disconnected</span>
+                <button id="connectBtn" onclick="toggleConnection()">Connect</button>
             </div>
         </header>
 
@@ -359,19 +372,69 @@
         function updateStatusUI() {
             const indicator = document.getElementById('statusIndicator');
             const text = document.getElementById('statusText');
+            const connectBtn = document.getElementById('connectBtn');
 
             if (isConnected) {
                 indicator.classList.add('connected');
                 text.textContent = 'Connected';
+                connectBtn.textContent = 'Disconnect';
+                connectBtn.className = 'danger';
             } else {
                 indicator.classList.remove('connected');
                 text.textContent = 'Disconnected';
+                connectBtn.textContent = 'Connect';
+                connectBtn.className = 'secondary';
             }
         }
 
         function startCameraStreams() {
             document.getElementById('frontCamera').src = API_BASE + '/cameras/front/stream';
             document.getElementById('wristCamera').src = API_BASE + '/cameras/wrist/stream';
+        }
+
+        async function toggleConnection() {
+            const connectBtn = document.getElementById('connectBtn');
+            connectBtn.disabled = true;
+
+            try {
+                if (isConnected) {
+                    // Disconnect
+                    const response = await fetch(API_BASE + '/robot/disconnect', {
+                        method: 'POST'
+                    });
+
+                    if (response.ok) {
+                        showMessage('Robot disconnected successfully', 'success');
+                        isConnected = false;
+                        updateStatusUI();
+                        // Clear camera streams
+                        document.getElementById('frontCamera').src = '';
+                        document.getElementById('wristCamera').src = '';
+                    } else {
+                        const error = await response.json();
+                        showMessage('Failed to disconnect: ' + error.detail, 'error');
+                    }
+                } else {
+                    // Connect
+                    const response = await fetch(API_BASE + '/robot/connect', {
+                        method: 'POST'
+                    });
+
+                    if (response.ok) {
+                        showMessage('Robot connected successfully', 'success');
+                        isConnected = true;
+                        updateStatusUI();
+                        startCameraStreams();
+                    } else {
+                        const error = await response.json();
+                        showMessage('Failed to connect: ' + error.detail, 'error');
+                    }
+                }
+            } catch (error) {
+                showMessage('Connection request failed: ' + error.message, 'error');
+            } finally {
+                connectBtn.disabled = false;
+            }
         }
 
         async function getCurrentState() {
