@@ -1,10 +1,12 @@
 # ABOUTME: LeKiwi robot class - main interface for controlling the LeKiwi robot
 # ABOUTME: Manages motors (arm + omnidirectional base) and cameras (front + wrist)
 
+import json
 import logging
 import time
 from functools import cached_property
 from itertools import chain
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -53,8 +55,47 @@ class LeKiwi:
 
     def _load_calibration(self) -> dict[str, MotorCalibration] | None:
         """Load calibration from file if it exists."""
-        # TODO: Implement calibration file loading
-        return None
+        calibration_file = Path("config/calibration.json")
+        if not calibration_file.exists():
+            logger.debug(f"Calibration file not found: {calibration_file}")
+            return None
+
+        try:
+            with open(calibration_file) as f:
+                data = json.load(f)
+
+            calibration = {}
+            for name, cal_data in data.items():
+                calibration[name] = MotorCalibration(**cal_data)
+
+            logger.info(f"Loaded calibration from {calibration_file}")
+            return calibration
+        except Exception as e:
+            logger.error(f"Failed to load calibration from {calibration_file}: {e}")
+            return None
+
+    def _save_calibration(self, calibration: dict[str, MotorCalibration]) -> None:
+        """Save calibration to file."""
+        calibration_file = Path("config/calibration.json")
+
+        calibration_file.parent.mkdir(parents=True, exist_ok=True)
+
+        data = {}
+        for name, cal in calibration.items():
+            data[name] = {
+                "id": cal.id,
+                "drive_mode": cal.drive_mode,
+                "homing_offset": cal.homing_offset,
+                "range_min": cal.range_min,
+                "range_max": cal.range_max,
+            }
+
+        try:
+            with open(calibration_file, "w") as f:
+                json.dump(data, f, indent=2)
+            logger.info(f"Saved calibration to {calibration_file}")
+        except Exception as e:
+            logger.error(f"Failed to save calibration to {calibration_file}: {e}")
 
     @property
     def is_connected(self) -> bool:
@@ -147,7 +188,7 @@ class LeKiwi:
             )
 
         self.bus.write_calibration(calibration)
-        # TODO: Save calibration to file
+        self._save_calibration(calibration)
         print("Calibration complete")
 
     @staticmethod

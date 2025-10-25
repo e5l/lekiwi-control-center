@@ -148,6 +148,7 @@ sbatch*.sh
 # Calibration files (user-specific)
 calibration/
 *.calibration
+config/calibration.json
 
 # Local configuration overrides
 config/*.local.yaml
