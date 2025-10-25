@@ -3,9 +3,12 @@
 
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from lekiwi_control import __version__
 from lekiwi_control.api.dependencies import initialize_robot
@@ -63,6 +66,21 @@ app.include_router(health_router)
 app.include_router(robot_router)
 app.include_router(motors_router)
 app.include_router(cameras_router)
+
+# Mount static files directory
+static_dir = Path(__file__).parent.parent.parent.parent / "static"
+if static_dir.exists():
+    app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+
+
+# Serve control page
+@app.get("/")
+async def serve_control_page():
+    """Serve the robot control web interface."""
+    control_page = static_dir / "control.html"
+    if control_page.exists():
+        return FileResponse(control_page)
+    return {"message": "Control page not found. Please create static/control.html"}
 
 
 def main():
