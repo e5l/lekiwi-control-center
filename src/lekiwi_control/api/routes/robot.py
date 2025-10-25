@@ -15,13 +15,17 @@ async def connect_robot(robot: LeKiwi = Depends(get_robot)):
     """Connect to the robot hardware.
 
     This initializes the motor bus and cameras.
-    Calibration is performed automatically if needed.
+
+    Calibration behavior:
+    - If config/calibration.json exists: loaded and applied automatically
+    - If no calibration file: interactive calibration is NOT triggered via API
+      (use the /robot/calibrate endpoint or run calibration manually)
     """
     if robot.is_connected:
         raise HTTPException(status_code=400, detail="Robot already connected")
 
     try:
-        robot.connect(calibrate=True)
+        robot.connect(calibrate=False)
         return {"success": True, "message": "Robot connected successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to connect: {str(e)}")

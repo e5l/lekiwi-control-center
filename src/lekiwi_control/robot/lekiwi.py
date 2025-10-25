@@ -111,14 +111,29 @@ class LeKiwi:
         """Connect to robot hardware.
 
         Args:
-            calibrate: If True, run calibration if needed.
+            calibrate: If True, run interactive calibration if needed.
+                      Skipped if calibration was loaded from file.
         """
         if self.is_connected:
             raise DeviceAlreadyConnectedError("Robot already connected")
 
         self.bus.connect()
-        if not self.is_calibrated and calibrate:
-            logger.info("Robot not calibrated. Running calibration...")
+
+        # If we have calibration loaded from file, write it to motors
+        calibration_from_file = bool(self.bus.calibration)
+        if calibration_from_file:
+            logger.info("Writing calibration from file to motors...")
+            self.bus.disable_torque()
+            self.bus.write_calibration(self.bus.calibration)
+            self.bus.enable_torque()
+            logger.info("Calibration loaded from file and applied successfully")
+
+        # Only run interactive calibration if:
+        # 1. No calibration was loaded from file
+        # 2. Robot is not calibrated
+        # 3. calibrate flag is True
+        if not calibration_from_file and not self.is_calibrated and calibrate:
+            logger.info("Robot not calibrated. Running interactive calibration...")
             self.calibrate()
 
         for cam in self.cameras.values():
