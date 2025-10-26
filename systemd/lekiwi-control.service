@@ -1,0 +1,16 @@
+[Unit]
+Description=LeKiwi Control Center API Server
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/lekiwi-control-center
+# Note: .venv is created by 'uv sync'
+Environment="PATH=/home/pi/lekiwi-control-center/.venv/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=/home/pi/lekiwi-control-center/.venv/bin/lekiwi-server
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target
