@@ -80,7 +80,7 @@ async def serve_control_page():
     control_page = static_dir / "control.html"
     if control_page.exists():
         return FileResponse(control_page)
-    return {"message": "Control page not found. Please create static/control.html"}
+    return {"message": "Contro page not found. Please create static/control.html"}
 
 
 def main():

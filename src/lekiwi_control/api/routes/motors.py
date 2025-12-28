@@ -1,6 +1,8 @@
 # ABOUTME: Motor control endpoints for arm and base motors
 # ABOUTME: Provides REST API for reading motor state and sending position/velocity commands
 
+import time
+
 from fastapi import APIRouter, Depends, HTTPException
 
 from lekiwi_control.api.dependencies import get_robot
@@ -22,7 +24,10 @@ async def get_motors_state(robot: LeKiwi = Depends(get_robot)):
         raise HTTPException(status_code=503, detail="Robot not connected")
 
     try:
+        t0 = time.time()
         observation = robot.get_observation()
+        t_obs = time.time() - t0
+        print(f"[API /motors/state] get_observation took {t_obs:.3f}s")
 
         # Extract arm positions
         arm_motors = {
@@ -58,6 +63,7 @@ async def set_arm_position(request: ArmPositionRequest, robot: LeKiwi = Depends(
         raise HTTPException(status_code=503, detail="Robot not connected")
 
     try:
+        t0 = time.time()
         # Build action dict
         action = {
             "arm_shoulder_pan.pos": request.arm_shoulder_pan,
@@ -72,6 +78,8 @@ async def set_arm_position(request: ArmPositionRequest, robot: LeKiwi = Depends(
         }
 
         action_sent = robot.send_action(action)
+        t_send = time.time() - t0
+        print(f"[API /motors/arm/position] send_action took {t_send:.3f}s")
         return ActionResponse(success=True, action_sent=action_sent)
 
     except Exception as e:
@@ -91,8 +99,11 @@ async def set_base_velocity(request: BaseVelocityRequest, robot: LeKiwi = Depend
         raise HTTPException(status_code=503, detail="Robot not connected")
 
     try:
+        t0 = time.time()
         # Get current arm positions
         observation = robot.get_observation()
+        t_obs = time.time() - t0
+        print(f"[API /motors/base/velocity] get_observation took {t_obs:.3f}s")
 
         # Build action dict with current arm positions and new base velocities
         action = {
@@ -107,7 +118,10 @@ async def set_base_velocity(request: BaseVelocityRequest, robot: LeKiwi = Depend
             "theta.vel": request.theta,
         }
 
+        t1 = time.time()
         action_sent = robot.send_action(action)
+        t_send = time.time() - t1
+        print(f"[API /motors/base/velocity] send_action took {t_send:.3f}s")
         return ActionResponse(success=True, action_sent=action_sent)
 
     except Exception as e:

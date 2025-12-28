@@ -2,6 +2,7 @@
 # ABOUTME: Provides JPEG image capture and MJPEG streaming from front and wrist cameras
 
 import io
+import time
 
 import cv2
 import numpy as np
@@ -43,12 +44,19 @@ async def get_camera_frame(camera_id: str, robot: LeKiwi = Depends(get_robot)):
         )
 
     try:
+        t0 = time.time()
         # Get observation which includes camera frames
         observation = robot.get_observation()
+        t_obs = time.time() - t0
+        print(f"[API /cameras/{camera_id}/frame] get_observation took {t_obs:.3f}s")
+
         frame = observation[camera_id]
 
         # Encode as JPEG (frame is already in BGR format from camera config)
+        t1 = time.time()
         ret, buffer = cv2.imencode(".jpg", frame, [int(cv2.IMWRITE_JPEG_QUALITY), 90])
+        t_encode = time.time() - t1
+        print(f"[API /cameras/{camera_id}/frame] JPEG encode took {t_encode:.3f}s")
         if not ret:
             raise HTTPException(status_code=500, detail="Failed to encode image")
 
