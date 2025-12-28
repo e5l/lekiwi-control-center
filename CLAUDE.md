@@ -100,12 +100,17 @@ LeKiwi Robot Class
    - `dependencies.py` - Robot singleton injection
    - `routes/` - Endpoint handlers (health, robot, motors, cameras)
 
-2. **Robot Layer** (`src/lekiwi_control/robot/`)
+2. **Client Layer** (`src/lekiwi_control/client/`)
+
+   - `client.py` - Python client with automatic value clamping
+   - Motor limits enforcement for safe operations
+
+3. **Robot Layer** (`src/lekiwi_control/robot/`)
 
    - `lekiwi.py` - Main robot class with motor/camera control
    - `config.py` - Configuration dataclasses
 
-3. **Hardware Layer**
+4. **Hardware Layer**
    - `motors/` - Feetech motor bus and drivers
    - `cameras/` - OpenCV camera interface
 
@@ -183,6 +188,66 @@ API Request
 - `GET /cameras/list` - Returns `{cameras: ["front", "wrist"]}`
 - `GET /cameras/{id}/frame` - Single JPEG frame
 - `GET /cameras/{id}/stream` - MJPEG stream
+
+## Python Client
+
+The LeKiwi Control Center includes a Python client with automatic value clamping for safe motor control.
+
+### Installation
+
+The client is part of the `lekiwi-control-center` package:
+
+```python
+from lekiwi_control import LeKiwiClient
+```
+
+### Usage Example
+
+```python
+from lekiwi_control import LeKiwiClient
+
+# Create client
+client = LeKiwiClient("http://pi.local:8000")
+
+# Connect to robot
+client.connect()
+
+# Set arm positions (values are automatically clamped to safe ranges)
+client.set_arm_position(
+    shoulder_pan=50.0,
+    shoulder_lift=-20.0,
+    elbow_flex=30.0,
+    wrist_flex=15.0,
+    wrist_roll=0.0,
+    gripper=80.0
+)
+
+# Control base velocity
+client.set_base_velocity(x=0.1, y=0.0, theta=0.0)
+
+# Get current state
+state = client.get_motors_state()
+print(state)
+
+# Get camera frame
+frame = client.get_camera_frame("front", save_path="image.jpg")
+
+# Disconnect
+client.disconnect()
+```
+
+### Motor Value Clamping
+
+The client automatically clamps motor positions to measured safe ranges:
+
+- `shoulder_pan`: -100.0 to 100.0
+- `shoulder_lift`: -100.0 to 100.0
+- `elbow_flex`: -95.0 to 99.0
+- `wrist_flex`: -60.0 to 60.0
+- `wrist_roll`: -100.0 to 100.0
+- `gripper`: 0.0 to 100.0 (0=open, 100=closed)
+
+Values outside these ranges are automatically clamped before being sent to the API.
 
 ## Motor System
 
