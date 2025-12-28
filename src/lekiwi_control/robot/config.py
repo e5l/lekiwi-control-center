@@ -30,7 +30,7 @@ class LeKiwiConfig:
                 index_or_path="/dev/video0", rotation=Cv2Rotation.NO_ROTATION
             ),
             "wrist": OpenCVCameraConfig(
-                index_or_path="/dev/video2", rotation=Cv2Rotation.ROTATE_90
+                index_or_path="/dev/video2", rotation=Cv2Rotation.NO_ROTATION
             ),
         }
     )
