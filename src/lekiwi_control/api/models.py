@@ -72,3 +72,11 @@ class CalibrationResponse(BaseModel):
 
     success: bool
     message: str
+
+
+class FullObservationResponse(BaseModel):
+    """Complete robot observation (motors + all cameras in one call)."""
+
+    arm_motors: dict[str, float]  # Motor positions
+    base_velocities: dict[str, float]  # Base velocities (x, y, theta)
+    cameras: dict[str, str]  # Camera name -> base64-encoded JPEG

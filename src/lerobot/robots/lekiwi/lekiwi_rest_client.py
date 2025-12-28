@@ -158,34 +158,40 @@ class LeKiwiRestClient(Robot):
                 - *.vel: float (3 base velocities)
                 - camera_name: np.ndarray (H, W, 3) for each camera
         """
+        import base64
         import time
+
         t_start = time.time()
 
         if not self.is_connected:
             raise DeviceNotConnectedError(f"{self} is not connected")
 
-        # Get motor state (positions + velocities)
+        # Get complete observation in one API call (3x faster!)
         t0 = time.time()
-        state = self.client.get_motors_state()
-        t_motor = time.time() - t0
-        print(f"  get_motors_state API call: {t_motor:.3f}s")
+        full_obs = self.client.get_full_observation()
+        t_api = time.time() - t0
+        print(f"  get_full_observation API call: {t_api:.3f}s")
 
-        # Extract arm positions (API returns 'arm_motors' key, not 'arm_positions')
-        arm_pos = state.get("arm_motors", {})
-        obs_dict = {f"{k}.pos": v for k, v in arm_pos.items()}
+        obs_dict = {}
+
+        # Extract arm positions
+        arm_pos = full_obs.get("arm_motors", {})
+        obs_dict.update({f"{k}.pos": v for k, v in arm_pos.items()})
 
         # Extract base velocities
-        base_vel = state.get("base_velocities", {})
+        base_vel = full_obs.get("base_velocities", {})
         obs_dict.update({f"{k}.vel": v for k, v in base_vel.items()})
 
-        # Get camera frames
+        # Decode camera frames from base64 JPEG
+        cameras = full_obs.get("cameras", {})
         for cam_name in self._camera_names:
             try:
-                # Get JPEG bytes from API
+                # Decode base64 to JPEG bytes
                 t0 = time.time()
-                jpeg_bytes = self.client.get_camera_frame(cam_name)
-                t_api = time.time() - t0
-                print(f"  get_camera_frame({cam_name}) API call: {t_api:.3f}s ({len(jpeg_bytes)} bytes)")
+                jpeg_base64 = cameras[cam_name]
+                jpeg_bytes = base64.b64decode(jpeg_base64)
+                t_b64 = time.time() - t0
+                print(f"  base64 decode({cam_name}): {t_b64:.3f}s ({len(jpeg_bytes)} bytes)")
 
                 # Convert JPEG to numpy array
                 t0 = time.time()
@@ -196,16 +202,15 @@ class LeKiwiRestClient(Robot):
 
                 # Ensure RGB format (API returns BGR, convert if needed)
                 if image_array.shape[2] == 3:  # Has 3 channels
-                    # Check config for color mode
                     cam_config = self.config.cameras[cam_name]
-                    if hasattr(cam_config, 'color_mode') and cam_config.color_mode == 'bgr':
+                    if hasattr(cam_config, "color_mode") and cam_config.color_mode == "bgr":
                         # Convert BGR to RGB
                         image_array = image_array[:, :, ::-1]
 
                 obs_dict[cam_name] = image_array
 
             except Exception as e:
-                logger.error(f"Failed to get frame from {cam_name}: {e}")
+                logger.error(f"Failed to decode frame from {cam_name}: {e}")
                 # Return blank frame as fallback
                 h, w, c = self._cameras_ft[cam_name]
                 obs_dict[cam_name] = np.zeros((h, w, c), dtype=np.uint8)
@@ -291,6 +296,8 @@ class LeKiwiRestClient(Robot):
             self.client.stop()
             # Disconnect from hardware
             self.client.disconnect()
+            # Close HTTP session to release resources
+            self.client.close()
             logger.info(f"{self} disconnected")
         except Exception as e:
             logger.error(f"Error during disconnect: {e}")

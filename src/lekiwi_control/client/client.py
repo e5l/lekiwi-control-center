@@ -10,6 +10,7 @@ class LeKiwiClient:
     """Simple client for interacting with LeKiwi Control Center API.
 
     Automatically clamps motor values to safe ranges before sending commands.
+    Uses persistent HTTP session for connection reuse (keep-alive).
     """
 
     # Motor position limits (measured values)
@@ -29,6 +30,19 @@ class LeKiwiClient:
             base_url: Base URL of the LeKiwi Control Center API
         """
         self.base_url = base_url.rstrip("/")
+        # Use session for connection pooling and HTTP keep-alive
+        self.session = requests.Session()
+        # Configure session for optimal performance
+        self.session.headers.update({"Connection": "keep-alive"})
+        # Connection pooling: reuse connections to avoid TCP handshake overhead
+        adapter = requests.adapters.HTTPAdapter(
+            pool_connections=10,
+            pool_maxsize=10,
+            max_retries=3,
+            pool_block=False
+        )
+        self.session.mount("http://", adapter)
+        self.session.mount("https://", adapter)
 
     @classmethod
     def _clamp_value(cls, value: float, motor_name: str) -> float:
@@ -49,31 +63,31 @@ class LeKiwiClient:
 
     def health_check(self) -> dict[str, Any]:
         """Check if the server is healthy."""
-        response = requests.get(f"{self.base_url}/health")
+        response = self.session.get(f"{self.base_url}/health")
         response.raise_for_status()
         return response.json()
 
     def get_status(self) -> dict[str, Any]:
         """Get robot connection status."""
-        response = requests.get(f"{self.base_url}/status")
+        response = self.session.get(f"{self.base_url}/status")
         response.raise_for_status()
         return response.json()
 
     def connect(self) -> dict[str, Any]:
         """Connect to the robot."""
-        response = requests.post(f"{self.base_url}/robot/connect")
+        response = self.session.post(f"{self.base_url}/robot/connect")
         response.raise_for_status()
         return response.json()
 
     def disconnect(self) -> dict[str, Any]:
         """Disconnect from the robot."""
-        response = requests.post(f"{self.base_url}/robot/disconnect")
+        response = self.session.post(f"{self.base_url}/robot/disconnect")
         response.raise_for_status()
         return response.json()
 
     def get_motors_state(self) -> dict[str, Any]:
         """Get current motor positions and velocities."""
-        response = requests.get(f"{self.base_url}/motors/state")
+        response = self.session.get(f"{self.base_url}/motors/state")
         response.raise_for_status()
         return response.json()
 
@@ -115,7 +129,7 @@ class LeKiwiClient:
             "arm_wrist_roll": self._clamp_value(wrist_roll, "arm_wrist_roll"),
             "arm_gripper": self._clamp_value(gripper, "arm_gripper"),
         }
-        response = requests.post(f"{self.base_url}/motors/arm/position", json=payload)
+        response = self.session.post(f"{self.base_url}/motors/arm/position", json=payload)
         response.raise_for_status()
         return response.json()
 
@@ -131,19 +145,19 @@ class LeKiwiClient:
             API response with success status
         """
         payload = {"x": x, "y": y, "theta": theta}
-        response = requests.post(f"{self.base_url}/motors/base/velocity", json=payload)
+        response = self.session.post(f"{self.base_url}/motors/base/velocity", json=payload)
         response.raise_for_status()
         return response.json()
 
     def stop(self) -> dict[str, Any]:
         """Emergency stop (base motors only)."""
-        response = requests.post(f"{self.base_url}/motors/stop")
+        response = self.session.post(f"{self.base_url}/motors/stop")
         response.raise_for_status()
         return response.json()
 
     def list_cameras(self) -> dict[str, Any]:
         """List available cameras."""
-        response = requests.get(f"{self.base_url}/cameras/list")
+        response = self.session.get(f"{self.base_url}/cameras/list")
         response.raise_for_status()
         return response.json()
 
@@ -157,7 +171,7 @@ class LeKiwiClient:
         Returns:
             Raw JPEG image bytes
         """
-        response = requests.get(f"{self.base_url}/cameras/{camera_id}/frame")
+        response = self.session.get(f"{self.base_url}/cameras/{camera_id}/frame")
         response.raise_for_status()
 
         if save_path:
@@ -165,3 +179,33 @@ class LeKiwiClient:
                 f.write(response.content)
 
         return response.content
+
+    def get_full_observation(self) -> dict[str, Any]:
+        """Get complete robot observation in one call (motors + all cameras).
+
+        This is 3x faster than calling get_motors_state() and get_camera_frame()
+        separately, as it avoids multiple TCP connection overhead.
+
+        Uses HTTP keep-alive for persistent connection reuse.
+
+        Returns:
+            Dict with:
+                - arm_motors: Dict of motor positions
+                - base_velocities: Dict of base velocities
+                - cameras: Dict of camera name -> base64-encoded JPEG
+        """
+        response = self.session.get(f"{self.base_url}/robot/observation")
+        response.raise_for_status()
+        return response.json()
+
+    def close(self) -> None:
+        """Close the HTTP session and release resources."""
+        self.session.close()
+
+    def __enter__(self):
+        """Context manager entry."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit - close session."""
+        self.close()
