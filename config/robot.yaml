@@ -22,6 +22,7 @@ cameras:
     height: 480
     fps: 30
     rotation: 2  # 180 degrees
+    color_mode: "bgr"  # OpenCV native format for efficient JPEG encoding
 
   wrist:
     index_or_path: "/dev/video2"
@@ -29,6 +30,7 @@ cameras:
     height: 640
     fps: 30
     rotation: 1  # 90 degrees clockwise
+    color_mode: "bgr"  # OpenCV native format for efficient JPEG encoding
 
 server:
   host: "0.0.0.0"

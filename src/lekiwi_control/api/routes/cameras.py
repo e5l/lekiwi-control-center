@@ -47,7 +47,7 @@ async def get_camera_frame(camera_id: str, robot: LeKiwi = Depends(get_robot)):
         observation = robot.get_observation()
         frame = observation[camera_id]
 
-        # Encode as JPEG
+        # Encode as JPEG (frame is already in BGR format from camera config)
         ret, buffer = cv2.imencode(".jpg", frame, [int(cv2.IMWRITE_JPEG_QUALITY), 90])
         if not ret:
             raise HTTPException(status_code=500, detail="Failed to encode image")
@@ -84,7 +84,7 @@ async def stream_camera(camera_id: str, robot: LeKiwi = Depends(get_robot)):
                 observation = robot.get_observation()
                 frame = observation[camera_id]
 
-                # Encode as JPEG
+                # Encode as JPEG (frame is already in BGR format from camera config)
                 ret, buffer = cv2.imencode(".jpg", frame, [int(cv2.IMWRITE_JPEG_QUALITY), 85])
                 if not ret:
                     continue

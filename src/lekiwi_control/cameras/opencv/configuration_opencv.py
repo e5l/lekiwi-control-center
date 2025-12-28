@@ -58,7 +58,7 @@ class OpenCVCameraConfig(CameraConfig):
     """
 
     index_or_path: int | Path = 0
-    color_mode: ColorMode = ColorMode.RGB
+    color_mode: ColorMode = ColorMode.BGR
     rotation: Cv2Rotation = Cv2Rotation.NO_ROTATION
     warmup_s: int = 1
     fourcc: str | None = None
