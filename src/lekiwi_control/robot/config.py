@@ -27,7 +27,7 @@ class LeKiwiConfig:
     cameras: dict[str, CameraConfig] = field(
         default_factory=lambda: {
             "front": OpenCVCameraConfig(
-                index_or_path="/dev/video0", rotation=Cv2Rotation.ROTATE_180
+                index_or_path="/dev/video0", rotation=Cv2Rotation.NO_ROTATION
             ),
             "wrist": OpenCVCameraConfig(
                 index_or_path="/dev/video2", rotation=Cv2Rotation.ROTATE_90

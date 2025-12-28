@@ -5,7 +5,6 @@ import time
 
 from lekiwi_control import LeKiwiClient
 
-
 def main():
     """Example usage of the LeKiwi client."""
     client = LeKiwiClient()  # Update with your robot's IP
